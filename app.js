@@ -2,12 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const app = express();
-const port = 3001;
-const root = "http://ws.audioscrobbler.com/2.0";
-const headers = {
-  "User-Agent": "VibeVault/1.0 ( danialrossar@gmail.com )",
-  Accept: "application/json",
-};
+require("dotenv").config();
+const root = "https://api.spotify.com/v1";
+const port = process.env.PORT;
+
+let token = null;
 
 app.use(
   cors({
@@ -22,32 +21,31 @@ app.get("/", (req, res) => {
   res.send({ message: "Welcome to VibeVault API." });
 });
 
-//get recommendations based on song
-app.post("/api/track", async (req, res) => {
-  const recording = encodeURIComponent(req.body.recording);
-  const artist = encodeURIComponent(req.body.artist);
-
-  console.log(recording);
-  console.log(artist);
-  console.log(root);
-  console.log(headers);
-  const url = `${root}/recording?query=recording:%22${recording}%22+AND+artist:%22${artist}%22`;
+app.get("/get-token", async (req, res) => {
+  const url = "https://accounts.spotify.com/api/token";
+  const clientId = process.env.SPOTIFY_CLIENT_ID;
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString(
+    "base64"
+  );
 
   try {
-    const result = await axios.get(url, { headers: headers });
-    res.send({ res: result.data });
+    const response = await axios.post(url, "grant_type=client_credentials", {
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+    });
+    token = response.data.access_token;
+    console.log({ res: token });
+    res.send("Authorized by Spotify API");
   } catch (e) {
-    console.error({ error: e });
-    res.status(500).send({ error: "Failed to fetch data", details: e });
+    console.error("Error getting authorization from Spotify API", e);
   }
-  //   res.send({
-  //     recording: recording,
-  //     artist: artist,
-  //     root: root,
-  //     headers: headers,
-  //     url: url,
-  //   });
 });
+
+//get recommendations based on song
+app.post("/api/track", async (req, res) => {});
 
 //get recommendations based on genre
 app.post("/api/genre", (req, res) => {
