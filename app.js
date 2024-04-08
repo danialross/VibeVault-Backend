@@ -6,12 +6,22 @@ require("dotenv").config();
 const root = "https://api.spotify.com/v1";
 const port = process.env.PORT;
 
-let token = null;
+let users = new Map();
 
 app.use(
   cors({
     origin: "https://localhost:3000",
     methods: ["GET", "POST"],
+  })
+);
+
+app.use(
+  session({
+    secret: process.env.SECRETKEY,
+    resave: false,
+    saveUninitialized: true,
+    rolling: false,
+    cookie: { httpOnly: true, secure: false, maxAge: 3600000 },
   })
 );
 
@@ -21,7 +31,15 @@ app.get("/", (req, res) => {
   res.send({ message: "Welcome to VibeVault API." });
 });
 
-app.get("/get-token", async (req, res) => {
+const validateToken = async (req) => {
+  if (
+    req.session.userId &&
+    req.session.token &&
+    req.session.expires_in > Date.now()
+  ) {
+    return;
+  }
+
   const url = "https://accounts.spotify.com/api/token";
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
@@ -36,11 +54,42 @@ app.get("/get-token", async (req, res) => {
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
-    token = response.data.access_token;
-    console.log({ res: token });
-    res.send("Authorized by Spotify API");
+    req.session.token = response.data.access_token;
+    req.session.expires_in = Date.now() + response.data.expires_in * 1000;
+    console.log({ res: req.session });
+    return true;
   } catch (e) {
     console.error("Error getting authorization from Spotify API", e);
+    return false;
+  }
+};
+
+app.get("/get-id", async (req, res) => {
+  const validated = validateToken(req);
+  if (!validated) {
+    return res.send("an error occured when validating user");
+  }
+
+  let url = "https://api.spotify.com/v1/search?q=";
+  if (req.query.track) {
+    url + req.query.track + "&type=track&limit=4";
+
+    try {
+      const response = await axios.get(url);
+      const result = [];
+
+      for (item of response.data.tracks.items) {
+        result.push({
+          track: album.name,
+          artist: album.artists,
+          image: album.images,
+        });
+      }
+    } catch (e) {
+      console.error({ err: e });
+    }
+  } else {
+    url + req.query.artist + "&type=artist&limit=4";
   }
 });
 
