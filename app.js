@@ -6,8 +6,6 @@ require("dotenv").config();
 const root = "https://api.spotify.com/v1";
 const port = process.env.PORT;
 
-let users = new Map();
-
 app.use(
   cors({
     origin: "https://localhost:3000",
@@ -27,17 +25,14 @@ app.use(
 
 app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send({ message: "Welcome to VibeVault API." });
-});
-
-const validateToken = async (req) => {
+// middleware to check for a valid session and refresh token if not
+app.use(async (req, res, next) => {
   if (
     req.session.userId &&
     req.session.token &&
     req.session.expires_in > Date.now()
   ) {
-    return;
+    return next();
   }
 
   const url = "https://accounts.spotify.com/api/token";
@@ -56,13 +51,16 @@ const validateToken = async (req) => {
     });
     req.session.token = response.data.access_token;
     req.session.expires_in = Date.now() + response.data.expires_in * 1000;
-    console.log({ res: req.session });
-    return true;
+    next();
   } catch (e) {
     console.error("Error getting authorization from Spotify API", e);
-    return false;
+    res.status(500).send("Failed to authenticate with Spotify");
   }
-};
+});
+
+app.get("/", (req, res) => {
+  res.send({ message: "Welcome to VibeVault API." });
+});
 
 app.get("/get-id", async (req, res) => {
   const validated = validateToken(req);
@@ -72,7 +70,7 @@ app.get("/get-id", async (req, res) => {
 
   let url = "https://api.spotify.com/v1/search?q=";
   if (req.query.track) {
-    url + req.query.track + "&type=track&limit=4";
+    url += req.query.track + "&type=track&limit=4";
 
     try {
       const response = await axios.get(url);
