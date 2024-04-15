@@ -1,4 +1,5 @@
 const express = require("express");
+const session = require("express-session");
 const cors = require("cors");
 const axios = require("axios");
 const app = express();
@@ -27,14 +28,11 @@ app.use(express.json());
 
 // middleware to check for a valid session and refresh token if not
 app.use(async (req, res, next) => {
-  if (
-    req.session.userId &&
-    req.session.token &&
-    req.session.expires_in > Date.now()
-  ) {
+  if (req.session.token && req.session.expires_in > Date.now()) {
+    console.log("session already exist");
     return next();
   }
-
+  console.log("creating new session");
   const url = "https://accounts.spotify.com/api/token";
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
@@ -62,32 +60,40 @@ app.get("/", (req, res) => {
   res.send({ message: "Welcome to VibeVault API." });
 });
 
-app.get("/get-id", async (req, res) => {
-  const validated = validateToken(req);
-  if (!validated) {
-    return res.send("an error occured when validating user");
-  }
+//testing middleware
+app.get("/test", (req, res) => {
 
+//get spotify id of track/artist to use in recommendation query
+app.get("/get-id", async (req, res) => {
   let url = "https://api.spotify.com/v1/search?q=";
+  let isTrack = false;
   if (req.query.track) {
     url += req.query.track + "&type=track&limit=4";
-
-    try {
-      const response = await axios.get(url);
-      const result = [];
-
-      for (item of response.data.tracks.items) {
-        result.push({
-          track: album.name,
-          artist: album.artists,
-          image: album.images,
-        });
-      }
-    } catch (e) {
-      console.error({ err: e });
-    }
+    isTrack = true;
   } else {
-    url + req.query.artist + "&type=artist&limit=4";
+    url += req.query.artist + "&type=artist&limit=4";
+  }
+
+  try {
+    const response = await axios.get(url);
+    const result = [];
+
+    //grabs the artist name or track name depending or query
+    let iterable = null;
+    isTrack
+      ? (iterable = response.data.tracks.items)
+      : (iterable = response.data.artist.items);
+
+    for (item of iterable) {
+      result.push({
+        name: item.name,
+        images: item.images,
+        id: item.id,
+        ...(isTrack ? { artist: item.artist } : {}),
+      });
+    }
+  } catch (e) {
+    console.error({ err: e });
   }
 });
 
