@@ -62,9 +62,12 @@ app.get("/", (req, res) => {
 
 //testing middleware
 app.get("/test", (req, res) => {
+  console.log(req.session);
+  res.status(200).send("completed");
+});
 
-//get spotify id of track/artist to use in recommendation query
-app.get("/get-id", async (req, res) => {
+//get spotify metadata of track/artist to use in recommendation query
+app.get("/get-metadata", async (req, res) => {
   let url = "https://api.spotify.com/v1/search?q=";
   let isTrack = false;
   if (req.query.track) {
@@ -75,38 +78,57 @@ app.get("/get-id", async (req, res) => {
   }
 
   try {
-    const response = await axios.get(url);
-    const result = [];
+    const result = await axios.get(url);
+    const metadata = [];
 
     //grabs the artist name or track name depending or query
     let iterable = null;
     isTrack
-      ? (iterable = response.data.tracks.items)
-      : (iterable = response.data.artist.items);
+      ? (iterable = result.data.tracks.items)
+      : (iterable = result.data.artist.items);
 
     for (item of iterable) {
-      result.push({
+      metadata.push({
         name: item.name,
         images: item.images,
         id: item.id,
         ...(isTrack ? { artist: item.artist } : {}),
       });
     }
+    res.send({ result: metadata });
   } catch (e) {
     console.error({ err: e });
   }
 });
 
 //get recommendations based on song
-app.post("/api/track", async (req, res) => {});
+app.post("/recommendations/track", async (req, res) => {
+  const url = `${root}/recommendations?limit=5&seed_tracks=${req.query.track}&target_popularity=0.7&target_energy=0.7`;
+
+  try {
+    const recommendations = await axios.get(url);
+    const tracks = [];
+
+    for (track of recommendations.data.tracks) {
+      tracks.push({
+        name: track.name,
+        images: track.images,
+        artists: track.artist,
+      });
+    }
+    res.send({ tracks: tracks });
+  } catch (e) {
+    console.error({ err: e });
+  }
+});
 
 //get recommendations based on genre
-app.post("/api/genre", (req, res) => {
+app.post("/recommendations/genre", (req, res) => {
   res.send("genre");
 });
 
 //get recommendations based on artist
-app.post("/api/artist", (req, res) => {
+app.post("/recommendations/artist", (req, res) => {
   res.send("artist");
 });
 
