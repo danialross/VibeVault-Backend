@@ -76,26 +76,31 @@ app.get("/get-metadata", async (req, res) => {
   } else {
     url += req.query.artist + "&type=artist&limit=4";
   }
+  console.log(`url: ${url}`);
+  console.log(`token ${req.session.token}`);
 
   try {
-    const result = await axios.get(url);
+    const headers = { Authorization: `Bearer ${req.session.token}` };
+    const result = await axios.get(url, { headers });
     const metadata = [];
 
     //grabs the artist name or track name depending or query
     let iterable = null;
     isTrack
       ? (iterable = result.data.tracks.items)
-      : (iterable = result.data.artist.items);
+      : (iterable = result.data.artists.items);
 
     for (item of iterable) {
       metadata.push({
         name: item.name,
-        images: item.images,
+
         id: item.id,
-        ...(isTrack ? { artist: item.artist } : {}),
+        ...(isTrack
+          ? { artist: item.artists, images: item.album.images }
+          : { images: item.images }),
       });
     }
-    res.send({ result: metadata });
+    res.json({ result: metadata });
   } catch (e) {
     console.error({ err: e });
   }
@@ -106,7 +111,8 @@ app.post("/recommendations/track", async (req, res) => {
   const url = `${root}/recommendations?limit=5&seed_tracks=${req.query.track}&target_popularity=0.7&target_energy=0.7`;
 
   try {
-    const recommendations = await axios.get(url);
+    const headers = { Authorization: req.session.token };
+    const recommendations = await axios.get(url, { headers });
     const tracks = [];
 
     for (track of recommendations.data.tracks) {
