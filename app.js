@@ -68,20 +68,25 @@ app.get("/test", (req, res) => {
 
 //get spotify metadata of track/artist to use in recommendation query
 app.get("/get-metadata", async (req, res) => {
-  let url = "https://api.spotify.com/v1/search?q=";
+  let url = "https://api.spotify.com/v1/search";
   let isTrack = false;
+  const headers = { Authorization: `Bearer ${req.session.token}` };
+  let params = { limit: 4 };
+
   if (req.query.track) {
-    url += req.query.track + "&type=track&limit=4";
+    params.type = "track";
+    params.q = req.query.track;
     isTrack = true;
   } else {
-    url += req.query.artist + "&type=artist&limit=4";
+    params.type = "artist";
+    params.q = req.query.artist;
   }
+
   console.log(`url: ${url}`);
   console.log(`token ${req.session.token}`);
 
   try {
-    const headers = { Authorization: `Bearer ${req.session.token}` };
-    const result = await axios.get(url, { headers });
+    const result = await axios.get(url, { headers: headers, params: params });
     const metadata = [];
 
     //grabs the artist name or track name depending or query
@@ -107,19 +112,30 @@ app.get("/get-metadata", async (req, res) => {
 });
 
 //get recommendations based on song
-app.post("/recommendations/track", async (req, res) => {
-  const url = `${root}/recommendations?limit=5&seed_tracks=${req.query.track}&target_popularity=0.7&target_energy=0.7`;
+app.get("/recommendations/track", async (req, res) => {
+  const url = `${root}/recommendations`;
+  const headers = { Authorization: `Bearer ${req.session.token}` };
+  const params = {
+    limit: 5,
+    seed_tracks: req.query.id,
+  };
+  console.log(`url: ${url}`);
+  console.log(`headers: ${headers}`);
+  console.log(`params: ${params}`);
 
   try {
-    const headers = { Authorization: req.session.token };
-    const recommendations = await axios.get(url, { headers });
+    const recommendations = await axios.get(url, {
+      headers: headers,
+      params: params,
+    });
+
     const tracks = [];
 
     for (track of recommendations.data.tracks) {
       tracks.push({
         name: track.name,
-        images: track.images,
-        artists: track.artist,
+        images: track.album.images,
+        artists: track.artists,
       });
     }
     res.send({ tracks: tracks });
