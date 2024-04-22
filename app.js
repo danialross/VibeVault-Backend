@@ -6,10 +6,6 @@ const app = express();
 require("dotenv").config();
 const root = "https://api.spotify.com/v1";
 const port = process.env.PORT;
-const recSettings = {
-  limit: 8,
-  target_energy: 0.7,
-};
 
 app.use(
   cors({
@@ -62,12 +58,6 @@ app.use(async (req, res, next) => {
 
 app.get("/", (req, res) => {
   res.send({ message: "Welcome to VibeVault API." });
-});
-
-//testing middleware
-app.get("/test", (req, res) => {
-  console.log(req.session);
-  res.status(200).send("completed");
 });
 
 //get spotify metadata of track/artist to use in recommendation query
@@ -132,7 +122,6 @@ app.get("/recommendations/:type", async (req, res) => {
   };
 
   const headers = { Authorization: `Bearer ${req.session.token}` };
-  const params = { ...recSettings };
 
   //artist recommendations
   if (req.params.type === "artist") {
@@ -165,49 +154,47 @@ app.get("/recommendations/:type", async (req, res) => {
       res.send({ error: e });
     }
     return;
-
+  } else if (req.params.type === "track" || req.params.type === "genre") {
+    const params = { limit: 8 };
     // recommendation for tracks
-  } else if (req.params.type === "track") {
-    console.log(req);
-    if (req.query.id === undefined) {
-      res.send(getWarningText("Track"));
-      return;
+    if (req.params.type === "track") {
+      if (req.query.id === undefined) {
+        return res.send(getWarningText("Track"));
+      }
+      params.seed_tracks = req.query.id;
+
+      // recommendation for genre
+    } else if (req.params.type === "genre") {
+      if (req.query.id === undefined) {
+        return res.send(getWarningText("Genre"));
+      }
+      params.seed_genres = req.query.id;
     }
-    params.seed_tracks = req.query.id;
 
-    // recommendation for genre
-  } else if (req.params.type === "genre") {
-    if (req.query.id === undefined) {
-      res.send(getWarningText("Genre"));
-      return;
-    }
-    params.seed_genres = req.query.id;
-  }
+    const url = `${root}/recommendations`;
 
-  const url = `${root}/recommendations`;
-
-  try {
-    const recommendations = await axios.get(url, {
-      headers: headers,
-      params: params,
-    });
-
-    const tracks = [];
-
-    for (track of recommendations.data.tracks) {
-      tracks.push({
-        name: track.name,
-        images: track.album.images,
-        artists: track.artists,
+    try {
+      const recommendations = await axios.get(url, {
+        headers: headers,
+        params: params,
       });
-    }
-    res.send({ tracks: tracks });
-  } catch (e) {
-    console.error({ err: e });
-    res.send({ error: e });
-  }
 
-  return;
+      const tracks = [];
+
+      for (track of recommendations.data.tracks) {
+        tracks.push({
+          name: track.name,
+          images: track.album.images,
+          artists: track.artists,
+        });
+      }
+      res.send({ tracks: tracks });
+    } catch (e) {
+      console.error({ err: e });
+      res.send({ error: e });
+    }
+    return;
+  }
 });
 
 app.listen(port, () => {
