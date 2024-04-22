@@ -6,6 +6,10 @@ const app = express();
 require("dotenv").config();
 const root = "https://api.spotify.com/v1";
 const port = process.env.PORT;
+const recSettings = {
+  limit: 8,
+  target_energy: 0.7,
+};
 
 app.use(
   cors({
@@ -108,20 +112,79 @@ app.get("/get-metadata", async (req, res) => {
     res.json({ result: metadata });
   } catch (e) {
     console.error({ err: e });
+    res.send({ error: e });
   }
 });
 
-//get recommendations based on song
-app.get("/recommendations/track", async (req, res) => {
-  const url = `${root}/recommendations`;
-  const headers = { Authorization: `Bearer ${req.session.token}` };
-  const params = {
-    limit: 5,
-    seed_tracks: req.query.id,
+//get recommendations based on song,genre or artist
+app.get("/recommendations/:type", async (req, res) => {
+  if (
+    req.params.type !== "track" &&
+    req.params.type !== "genre" &&
+    req.params.type !== "artist"
+  ) {
+    res.status(404).send("Path not found");
+    return;
+  }
+
+  const getWarningText = (type) => {
+    return `${type} Id not included, Please include atleast one ${type} Id to get recommendations`;
   };
-  console.log(`url: ${url}`);
-  console.log(`headers: ${headers}`);
-  console.log(`params: ${params}`);
+
+  const headers = { Authorization: `Bearer ${req.session.token}` };
+  const params = { ...recSettings };
+
+  //artist recommendations
+  if (req.params.type === "artist") {
+    if (req.query.id === undefined) {
+      res.send(getWarningText("Artist"));
+      return;
+    }
+
+    const artistId = req.query.id;
+    console.log(artistId);
+    const url = `${root}/artists/${artistId}/related-artists`;
+
+    try {
+      const recommendations = await axios.get(url, {
+        headers: headers,
+      });
+
+      const artists = [];
+
+      for (artist of recommendations.data.artists) {
+        artists.push({
+          name: artist.name,
+          images: artist.images,
+          genres: artist.genres,
+        });
+      }
+      res.send({ artists: artists });
+    } catch (e) {
+      console.error({ err: e });
+      res.send({ error: e });
+    }
+    return;
+
+    // recommendation for tracks
+  } else if (req.params.type === "track") {
+    console.log(req);
+    if (req.query.id === undefined) {
+      res.send(getWarningText("Track"));
+      return;
+    }
+    params.seed_tracks = req.query.id;
+
+    // recommendation for genre
+  } else if (req.params.type === "genre") {
+    if (req.query.id === undefined) {
+      res.send(getWarningText("Genre"));
+      return;
+    }
+    params.seed_genres = req.query.id;
+  }
+
+  const url = `${root}/recommendations`;
 
   try {
     const recommendations = await axios.get(url, {
@@ -141,17 +204,10 @@ app.get("/recommendations/track", async (req, res) => {
     res.send({ tracks: tracks });
   } catch (e) {
     console.error({ err: e });
+    res.send({ error: e });
   }
-});
 
-//get recommendations based on genre
-app.post("/recommendations/genre", (req, res) => {
-  res.send("genre");
-});
-
-//get recommendations based on artist
-app.post("/recommendations/artist", (req, res) => {
-  res.send("artist");
+  return;
 });
 
 app.listen(port, () => {
