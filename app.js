@@ -9,7 +9,7 @@ const port = process.env.PORT;
 
 app.use(
   cors({
-    origin: "https://localhost:3000",
+    origin: process.env.ALLOWED_ORIGIN,
     methods: ["GET", "POST"],
   })
 );
@@ -89,9 +89,6 @@ app.get("/get-metadata", async (req, res) => {
     params.type = "artist";
     params.q = req.query.artist;
   }
-
-  console.log(`url: ${url}`);
-  console.log(`token ${req.session.token}`);
 
   try {
     const result = await axios.get(url, { headers: headers, params: params });
