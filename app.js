@@ -60,6 +60,20 @@ app.get("/", (req, res) => {
   res.send({ message: "Welcome to VibeVault API." });
 });
 
+app.get("/get-genres", async (req, res) => {
+  let url = `${root}/recommendations/available-genre-seeds`;
+  const headers = { Authorization: `Bearer ${req.session.token}` };
+
+  try {
+    const result = await axios.get(url, { headers: headers });
+
+    res.json({ result: result.data.genres });
+  } catch (e) {
+    console.error({ err: e });
+    res.send({ error: e });
+  }
+});
+
 //get spotify metadata of track/artist to use in recommendation query
 app.get("/get-metadata", async (req, res) => {
   let url = "https://api.spotify.com/v1/search";
