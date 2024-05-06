@@ -63,11 +63,16 @@ app.get("/", (req, res) => {
 app.get("/get-genres", async (req, res) => {
   let url = `${root}/recommendations/available-genre-seeds`;
   const headers = { Authorization: `Bearer ${req.session.token}` };
+  const query = req.query.genre;
 
   try {
     const result = await axios.get(url, { headers: headers });
 
-    res.json({ result: result.data.genres });
+    const filteredResult = result.data.genres.filter((item) =>
+      item.includes(query)
+    );
+    res.json({ result: filteredResult.slice(0, 4) });
+    // res.send({ result: result.data });
   } catch (e) {
     console.error({ err: e });
     res.send({ error: e });
