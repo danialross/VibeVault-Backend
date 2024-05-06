@@ -67,11 +67,17 @@ app.get("/get-genres", async (req, res) => {
 
   try {
     const result = await axios.get(url, { headers: headers });
+    const genres = [];
 
-    const filteredResult = result.data.genres.filter((item) =>
-      item.includes(query)
-    );
-    res.json({ result: filteredResult.slice(0, 4) });
+    for (genre of result.data.genres) {
+      if (genre.includes(query)) {
+        const firstLetterCapitalized =
+          genre.charAt(0).toUpperCase() + genre.slice(1);
+        genres.push({ genre: firstLetterCapitalized });
+      }
+    }
+
+    res.json({ result: genres.slice(0, 4) });
     // res.send({ result: result.data });
   } catch (e) {
     console.error({ err: e });
