@@ -218,3 +218,5 @@ app.get("/recommendations/:type", async (req, res) => {
     return;
   }
 });
+
+module.exports = app;
