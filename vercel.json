@@ -3,11 +3,10 @@
     "builds": [
       { "src": "app.js", "use": "@vercel/node" }
     ],
-    "routes":[
-        {"src":"/api/get-metadata","dest":"/get-metadata"},
-        {"src":"/api/get-genres","dest":"/get-genres"},
-        {"src":"/api/recommendations/:type","dest":"/recommendations/:type"}
-    ],
-    "framework":"express"
+    "rewrites":[
+        {"source":"/api/get-metadata","destination":"/get-metadata"},
+        {"source":"/api/get-genres","destination":"/get-genres"},
+        {"source":"/api/recommendations/:type","destination":"/recommendations/:type"}
+    ]
   }
   
