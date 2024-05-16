@@ -1,0 +1,12 @@
+{
+    "version": 2,
+    "builds": [
+      { "src": "app.js", "use": "@vercel/node" }
+    ],
+    "routes":[
+        {"src":"/api/get-metadata","dest":"/get-metadata"},
+        {"src":"/api//get-genres","dest":"//get-genres"},
+        {"src":"/api/recommendations/:type","dest":"/recommendations/:type"}
+    ]
+  }
+  

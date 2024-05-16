@@ -5,7 +5,6 @@ const axios = require("axios");
 const app = express();
 require("dotenv").config();
 const root = "https://api.spotify.com/v1";
-const port = process.env.PORT;
 
 app.use(
   cors({
@@ -151,7 +150,7 @@ app.get("/recommendations/:type", async (req, res) => {
       res.send(getWarningText("Artist"));
       return;
     }
-
+    const limit = 8;
     const artistId = req.query.id;
     console.log(artistId);
     const url = `${root}/artists/${artistId}/related-artists`;
@@ -163,7 +162,8 @@ app.get("/recommendations/:type", async (req, res) => {
 
       const artists = [];
 
-      for (artist of recommendations.data.artists) {
+      for (let i = 0; i < limit; i++) {
+        const artist = recommendations.data.artists[i];
         artists.push({
           name: artist.name,
           images: artist.images,
@@ -217,8 +217,4 @@ app.get("/recommendations/:type", async (req, res) => {
     }
     return;
   }
-});
-
-app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
 });
